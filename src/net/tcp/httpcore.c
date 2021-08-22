@@ -653,6 +653,8 @@ int http_open ( struct interface *xfer, struct http_method *method,
 	http->request.method = method;
 	http->request.uri = request_uri_string;
 	http->request.host = request_host_string;
+	if ( ! range && uri->range )
+		range = uri->range;
 	if ( range ) {
 		memcpy ( &http->request.range, range,
 			 sizeof ( http->request.range ) );
