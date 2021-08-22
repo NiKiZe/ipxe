@@ -15,6 +15,7 @@ FILE_LICENCE ( GPL2_OR_LATER_OR_UBDL );
 #include <ipxe/in.h>
 
 struct parameters;
+struct http_request_range;
 
 /** A Uniform Resource Identifier
  *
@@ -70,6 +71,8 @@ struct uri {
 	const char *fragment;
 	/** Form parameters */
 	struct parameters *params;
+	/** Range request */
+	struct http_request_range *range;
 } __attribute__ (( packed ));
 
 /**

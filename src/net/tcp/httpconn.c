@@ -50,6 +50,43 @@ FILE_LICENCE ( GPL2_OR_LATER_OR_UBDL );
 static LIST_HEAD ( http_connection_pool );
 
 /**
+ * Create range from string
+ *
+ * @v str		String to parse to range (may be NULL)
+ * @ret range		Range, or NULL if not found
+ */
+struct http_request_range * get_http_range ( const char *str ) {
+	struct http_request_range *range;
+	char *endp;
+	const void *dptr = str;
+	long long start;
+	long long len = -1;
+
+	if ( ! str || ! *str)
+		return NULL;
+
+	/* Parse integers */
+	start = strtoull ( str, &endp, 0 );
+	if ( *endp == '+' ) {
+		str = endp + 1;
+		len = strtoull ( str, &endp, 0 );
+	}
+	if ( *endp || ( ! *str ) ) {
+		DBGC ( dptr, "\"%s\": invalid integer value, remaining \"%s\"\n", str, endp );
+		return NULL;
+	}
+
+	range = zalloc ( sizeof ( *range ) );
+	if ( ! range )
+		return NULL;
+	range->start = start;
+	range->len = len;
+
+	DBGC2 ( dptr, "RANGE %zd + %zd created\n", range->start, range->len );
+	return range;
+}
+
+/**
  * Identify HTTP scheme
  *
  * @v uri		URI

@@ -554,6 +554,7 @@ struct http_authentication {
  ******************************************************************************
  */
 
+extern struct http_request_range * get_http_range ( const char *str );
 extern char * http_token ( char **line, char **value );
 extern int http_connect ( struct interface *xfer, struct uri *uri );
 extern int http_open ( struct interface *xfer, struct http_method *method,

@@ -36,6 +36,7 @@ FILE_LICENCE ( GPL2_OR_LATER_OR_UBDL );
 #include <ctype.h>
 #include <ipxe/vsprintf.h>
 #include <ipxe/params.h>
+#include <ipxe/http.h>
 #include <ipxe/tcpip.h>
 #include <ipxe/uri.h>
 
@@ -268,6 +269,8 @@ static void uri_dump ( const struct uri *uri ) {
 		DBGC ( uri, " fragment \"%s\"", uri->fragment );
 	if ( uri->params )
 		DBGC ( uri, " params \"%s\"", uri->params->name );
+	if ( uri->range )
+		DBGC ( uri, " range (%zd + %zd)", uri->range->start, uri->range->len );
 }
 
 /**
@@ -294,6 +297,7 @@ static void uri_free ( struct refcnt *refcnt ) {
  */
 struct uri * parse_uri ( const char *uri_string ) {
 	struct uri *uri;
+	struct http_request_range *range;
 	struct parameters *params;
 	char *raw;
 	char *tmp;
@@ -312,6 +316,20 @@ struct uri * parse_uri ( const char *uri_string ) {
 
 	/* Copy in the raw string */
 	memcpy ( raw, uri_string, raw_len );
+
+	/* Identify range request, if present */
+	if ( ( tmp = strstr ( raw, "##range=" ) ) ) {
+		DBGC2 ( raw, " range str \"%s\" ", tmp );
+		*tmp = '\0'; // insert null to hide from remaining logic
+		tmp += 8 /* "##range=" */;
+		range = get_http_range ( tmp );
+		if ( range ) {
+			uri->range = range;
+		} else {
+			/* Ignore invalid range */
+			DBGC ( raw, " no range values from \"%s\" ", tmp );
+		}
+	}
 
 	/* Identify the parameter list, if present */
 	if ( ( tmp = strstr ( raw, "##params" ) ) ) {
@@ -587,6 +605,9 @@ struct uri * uri_dup ( const struct uri *uri ) {
 	/* Copy fields */
 	uri_copy_fields ( uri, dup );
 
+	/* Copy range TODO fix internals */
+	dup->range = uri->range;
+
 	/* Copy parameters */
 	dup->params = params_get ( uri->params );
 
@@ -692,13 +713,19 @@ struct uri * resolve_uri ( const struct uri *base_uri,
 		tmp_uri.path = tmp_path;
 		tmp_uri.query = relative_uri->query;
 		tmp_uri.fragment = relative_uri->fragment;
+		tmp_uri.range = relative_uri->range;
 		tmp_uri.params = relative_uri->params;
 	} else if ( relative_uri->query ) {
 		tmp_uri.query = relative_uri->query;
 		tmp_uri.fragment = relative_uri->fragment;
+		tmp_uri.range = relative_uri->range;
 		tmp_uri.params = relative_uri->params;
 	} else if ( relative_uri->fragment ) {
 		tmp_uri.fragment = relative_uri->fragment;
+		tmp_uri.range = relative_uri->range;
+		tmp_uri.params = relative_uri->params;
+	} else if ( relative_uri->range ) {
+		tmp_uri.range = relative_uri->range;
 		tmp_uri.params = relative_uri->params;
 	} else if ( relative_uri->params ) {
 		tmp_uri.params = relative_uri->params;

@@ -37,6 +37,7 @@ FILE_LICENCE ( GPL2_OR_LATER_OR_UBDL );
 #include <ipxe/uri.h>
 #include <ipxe/tcpip.h>
 #include <ipxe/params.h>
+#include <ipxe/http.h>
 #include <ipxe/test.h>
 
 /** A URI parsing/formatting test */
@@ -152,6 +153,13 @@ static void uri_okx ( struct uri *uri, struct uri *expected, const char *file,
 	okx ( uristrcmp ( uri->query, expected->query ) == 0, file, line );
 	okx ( uristrcmp ( uri->fragment, expected->fragment ) == 0, file, line);
 	okx ( uri->params == expected->params, file, line );
+	if ( uri->range && expected->range ) {
+		okx ( uri->range->start == expected->range->start, file, line );
+		okx ( uri->range->len == expected->range->len, file, line );
+	} else if ( uri->range || expected->range ) {
+		okx ( uri->range || 0, file, line );
+		okx ( expected->range || 0, file, line );
+	}
 }
 #define uri_ok( uri, expected ) uri_okx ( uri, expected, __FILE__, __LINE__ )
 
@@ -237,6 +245,22 @@ static void uri_parse_format_dup_okx ( struct uri_test *test, const char *file,
 }
 #define uri_parse_format_dup_ok( test ) \
 	uri_parse_format_dup_okx ( test, __FILE__, __LINE__ )
+
+/**
+ * Report URI combined parsing and dup test result
+ *
+ * @v test		URI test
+ * @v file		Test code file
+ * @v line		Test code line
+ */
+static void uri_parse_dup_okx ( struct uri_test *test, const char *file,
+				       unsigned int line ) {
+
+	uri_parse_okx ( test, file, line );
+	uri_dup_okx ( &test->uri, file, line );
+}
+#define uri_parse_dup_ok( test ) \
+	uri_parse_dup_okx ( test, __FILE__, __LINE__ )
 
 /**
  * Report URI port number test result
@@ -552,6 +576,50 @@ static struct uri_test uri_http_escaped_improper = {
 		.path = "/wtf?\n",
 		.query = "kind#of/uri is",
 		.fragment = "this?",
+	},
+};
+
+/** HTTP URI with no range value */
+static struct uri_test uri_http_range_invalid = {
+	"http://test.ipxe.org/data##range=",
+	{
+		.scheme = "http",
+		.host = "test.ipxe.org",
+		.path = "/data",
+	},
+};
+
+/** Range for HTTP URI with start range + len*/
+static struct http_request_range uri_http_range_start_len_range = {
+	.start = 12,
+	.len = 29,
+};
+
+/** HTTP URI with start range + len */
+static struct uri_test uri_http_range_start_len = {
+	"http://test.ipxe.org/data##range=12+29",
+	{
+		.scheme = "http",
+		.host = "test.ipxe.org",
+		.path = "/data",
+		.range = &uri_http_range_start_len_range,
+	},
+};
+
+/** Range for HTTP URI with only start range */
+static struct http_request_range uri_http_range_start_range = {
+	.start = 12,
+	.len = -1,
+};
+
+/** HTTP URI with only start range */
+static struct uri_test uri_http_range_start = {
+	"http://test.ipxe.org/data##range=12",
+	{
+		.scheme = "http",
+		.host = "test.ipxe.org",
+		.path = "/data",
+		.range = &uri_http_range_start_range,
 	},
 };
 
@@ -878,6 +946,19 @@ static struct uri_params_test uri_params = {
 	uri_params_list,
 };
 
+/** Form parameter URI test with range */
+static struct uri_params_test uri_params_range = {
+	"http://boot.ipxe.org/demo/boot.php##params##range=12+29",
+	{
+		.scheme = "http",
+		.host = "boot.ipxe.org",
+		.path = "/demo/boot.php",
+		.range = &uri_http_range_start_len_range,
+	},
+	NULL,
+	uri_params_list,
+};
+
 /** Named form parameter URI test list */
 static struct uri_params_test_list uri_named_params_list[] = {
 	{
@@ -922,6 +1003,9 @@ static void uri_test_exec ( void ) {
 	uri_parse_format_dup_ok ( &uri_http_all );
 	uri_parse_format_dup_ok ( &uri_http_escaped );
 	uri_parse_ok ( &uri_http_escaped_improper ); /* Parse only */
+	uri_parse_dup_ok ( &uri_http_range_invalid );
+	uri_parse_dup_ok ( &uri_http_range_start_len );
+	uri_parse_dup_ok ( &uri_http_range_start );
 	uri_parse_format_dup_ok ( &uri_ipv6 );
 	uri_parse_format_dup_ok ( &uri_ipv6_port );
 	uri_parse_format_dup_ok ( &uri_ipv6_local );
@@ -962,6 +1046,7 @@ static void uri_test_exec ( void ) {
 	/* Form parameter URI tests */
 	uri_params_ok ( &uri_params );
 	uri_params_ok ( &uri_named_params );
+	uri_params_ok ( &uri_params_range );
 }
 
 /** URI self-test */
