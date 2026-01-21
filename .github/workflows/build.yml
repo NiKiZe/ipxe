@@ -86,3 +86,27 @@ jobs:
                bin-${{ matrix.arch }}-efi/snponly.efi \
                bin-${{ matrix.arch }}-efi/${{ matrix.target }}.usb \
                bin-${{ matrix.arch }}-efi/${{ matrix.target }}.iso
+      - name: Generate files list
+        id: files
+        # make sure non matching expands to nothing instead of error
+        run: |
+          shopt -s nullglob
+          echo files=$(echo src/bin*/*.*{pxe,krn,efi,iso,usb,dsk,rom,linux}) >> $GITHUB_OUTPUT
+          echo filesz=$(echo src/bin*/*.*{pxe,krn,efi,iso,usb,dsk,rom,linux} | sed "s, ,\0,") >> $GITHUB_OUTPUT
+      - name: Checksums
+        id: checksums
+        run: |
+          ls -l ${{ steps.files.outputs.files }} >> checksums.txt
+          sha256sum ${{ steps.files.outputs.files }} >> checksums.txt
+          cat checksums.txt
+          sed "s, src/, ," checksums.txt > checksums-${{ matrix.arch }}.txt
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          cat checksums-${{ matrix.arch }}.txt >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+      - name: Save artifacts
+        uses: actions/upload-artifact@v6
+        with:
+          name: ${{ matrix.arch }}
+          path: |
+            checksums-${{ matrix.arch }}.txt
+            ${{ steps.files.outputs.filesz }}
