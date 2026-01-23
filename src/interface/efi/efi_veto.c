@@ -487,12 +487,16 @@ efi_veto_vmware_uefipxebc ( EFI_DRIVER_BINDING_PROTOCOL *binding __unused,
  */
 static int efi_veto_dhcp6 ( EFI_DRIVER_BINDING_PROTOCOL *binding __unused,
 			    EFI_LOADED_IMAGE_PROTOCOL *loaded __unused,
-			    const char *manufacturer __unused,
+			    const char *manufacturer,
 			    const CHAR16 *name ) {
 	static const CHAR16 dhcp6[] = L"DHCP6 Protocol Driver";
+	static const char *lenovo = "LENOVO";
 
 	/* Check driver name */
 	if ( ! name )
+		return 0;
+	/* Assume LENOVO is ok */
+	if ( manufacturer && strcmp ( manufacturer, lenovo ) == 0 )
 		return 0;
 	if ( memcmp ( name, dhcp6, sizeof ( dhcp6 ) ) != 0 )
 		return 0;
